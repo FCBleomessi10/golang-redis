@@ -7,6 +7,9 @@ import (
 	"go-redis/database"
 	"go-redis/interface/resp"
 	"go-redis/lib/consistenthash"
+	"go-redis/lib/logger"
+	"go-redis/resp/reply"
+	"strings"
 )
 
 // 用户请求的转发, 需要连接池. 这样高并发时的请求不需要排队
@@ -38,7 +41,7 @@ func MakeClusterDatabase() *ClusterDatabase {
 
 	ctx := context.Background()
 	for _, peer := range config.Properties.Peers {
-		pool.NewObjectPoolWithDefaultConfig(ctx, &connectionFactory{Peer: peer})
+		cluster.peerConnection[peer] = pool.NewObjectPoolWithDefaultConfig(ctx, &connectionFactory{Peer: peer})
 	}
 
 	cluster.nodes = nodes
@@ -49,17 +52,27 @@ type CmdFunc func(*ClusterDatabase, resp.Connection, [][]byte) resp.Reply
 
 var router = makeRouter()
 
-func (c *ClusterDatabase) Exec(client resp.Connection, args [][]byte) resp.Reply {
-	//TODO implement me
-	panic("implement me")
+func (cluster *ClusterDatabase) Exec(client resp.Connection, args [][]byte) (result resp.Reply) {
+	defer func() {
+		if err := recover(); err != nil {
+			logger.Error(err)
+			result = &reply.UnknownErrReply{}
+		}
+	}()
+
+	cmdName := strings.ToLower(string(args[0]))
+	cmdFunc, ok := router[cmdName]
+	if !ok {
+		reply.MakeErrReply("not supported cmd")
+	}
+	result = cmdFunc(cluster, client, args)
+	return
 }
 
-func (c *ClusterDatabase) Close() {
-	//TODO implement me
-	panic("implement me")
+func (cluster *ClusterDatabase) Close() {
+	cluster.db.Close()
 }
 
-func (c *ClusterDatabase) AfterClientClose(r resp.Connection) {
-	//TODO implement me
-	panic("implement me")
+func (cluster *ClusterDatabase) AfterClientClose(c resp.Connection) {
+	cluster.db.AfterClientClose(c)
 }
