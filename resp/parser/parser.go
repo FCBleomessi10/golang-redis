@@ -32,10 +32,11 @@ func (s *readState) finished() bool {
 // ParseStream 异步地将解析结果送入管道, 不需要阻塞
 func ParseStream(reader io.Reader) <-chan *Payload {
 	ch := make(chan *Payload)
-	go parse0(reader, ch)
+	go parse0(reader, ch) // 为每个用户生成一个解析器
 	return ch
 }
 
+// parse 解析消息的主逻辑
 func parse0(reader io.Reader, ch chan<- *Payload) {
 	defer func() { // 不让for循环碰到异常退出
 		if err := recover(); err != nil {
@@ -51,11 +52,12 @@ func parse0(reader io.Reader, ch chan<- *Payload) {
 		var ioErr bool
 		msg, ioErr, err = readLine(bufReader, &state)
 		if err != nil {
-			if ioErr {
+			if ioErr { // IO错误
 				ch <- &Payload{Err: err}
 				close(ch)
 				return
 			}
+			// 协议错误
 			ch <- &Payload{Err: err}
 			state = readState{}
 			continue
@@ -64,29 +66,29 @@ func parse0(reader io.Reader, ch chan<- *Payload) {
 		if !state.readingMultiLine { // 判断是不是多行解析模式
 			if msg[0] == '*' { // 数组
 				err := parseMultiBulkHeader(msg, &state)
-				if err != nil {
+				if err != nil { // 协议错误
 					ch <- &Payload{Err: errors.New("protocol error: " + string(msg))}
 					state = readState{}
 					continue
 				}
-				if state.expectedArgsCount == 0 {
+				if state.expectedArgsCount == 0 { // 数组长度为0
 					ch <- &Payload{Data: &reply.EmptyMultiBulkReply{}}
 					state = readState{}
 					continue
 				}
 			} else if msg[0] == '$' { // 字符串
 				err := parseBulkHeader(msg, &state)
-				if err != nil {
+				if err != nil { // 协议错误
 					ch <- &Payload{Err: errors.New("protocol error: " + string(msg))}
 					state = readState{}
 					continue
 				}
-				if state.bulkLen == -1 {
+				if state.bulkLen == -1 { // 空字符串
 					ch <- &Payload{Data: &reply.NullBulkReply{}}
 					state = readState{}
 					continue
 				}
-			} else { // '+/-/:'
+			} else { // 单行解析'+/-/:'
 				result, err := parseSingleLineReply(msg)
 				ch <- &Payload{Data: result, Err: err}
 				state = readState{}

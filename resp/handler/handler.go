@@ -17,10 +17,6 @@ import (
 	"sync"
 )
 
-var (
-	unknownErrReplyBytes = []byte("-ERR unknown\r\n")
-)
-
 type RespHandler struct {
 	activeConn sync.Map
 	db         databaseface.DataBase
@@ -55,6 +51,7 @@ func (r *RespHandler) Handle(ctx context.Context, conn net.Conn) {
 	for payload := range ch {
 		// 异常逻辑
 		if payload.Err != nil {
+			// 客户端请求关闭TCP连接
 			if payload.Err == io.EOF ||
 				payload.Err == io.ErrUnexpectedEOF ||
 				strings.Contains(payload.Err.Error(), "use of closed network connection") {
@@ -85,7 +82,7 @@ func (r *RespHandler) Handle(ctx context.Context, conn net.Conn) {
 		if result != nil {
 			_ = client.Write(result.ToBytes())
 		} else {
-			_ = client.Write(unknownErrReplyBytes)
+			_ = client.Write(reply.MakeUnknownErrReply().ToBytes())
 		}
 	}
 }
@@ -93,12 +90,13 @@ func (r *RespHandler) Handle(ctx context.Context, conn net.Conn) {
 // Close 关闭所有client
 func (r *RespHandler) Close() error {
 	logger.Info("handler shutting down")
-	r.closing.Set(true)
+	r.closing.Set(true) // 将RespHandler.closing设置为true
+	// 遍历所有连接, 将它们关闭
 	r.activeConn.Range(func(key, value interface{}) bool {
 		client := key.(*connection.Connection)
 		_ = client.Close()
 		return true
 	})
-	r.db.Close()
+	r.db.Close() // 关闭redisdb
 	return nil
 }
