@@ -4,6 +4,7 @@ var (
 	unknownErrBytes      = []byte("-Err unknown\r\n")
 	syntaxErrBytes       = []byte("-Err syntax error\r\n")
 	wrongTypeErrReply    = []byte("-WRONGTYPE Operation against a key holding the wrong kind of value\r\n")
+	theUnknownErrBytes   = &UnknownErrReply{}
 	theSyntaxErrReply    = &SyntaxErrReply{}
 	theWrongTypeErrReply = &WrongTypeErrReply{}
 )
@@ -27,6 +28,10 @@ type ProtocolErrReply struct {
 
 func MakeArgNumErrReply(cmd string) *ArgNumErrReply {
 	return &ArgNumErrReply{Cmd: cmd}
+}
+
+func MakeUnknownErrReply() *UnknownErrReply {
+	return theUnknownErrBytes
 }
 
 func MakeSyntaxErrReply() *SyntaxErrReply {
