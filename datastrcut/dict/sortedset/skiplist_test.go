@@ -47,3 +47,18 @@ func TestGetByRank(t *testing.T) {
 		//t.Logf("rank: %v, ele: %v, score: %v", i, node.ele, node.score)
 	}
 }
+
+func TestGetRank(t *testing.T) {
+	length := 1000
+	s := *makeSkipList()
+	for i := 0; i < length; i++ {
+		s.insert(strconv.Itoa(i), float64(i))
+	}
+	for i := 0; i < length; i++ {
+		rank := s.getRank(strconv.Itoa(i), float64(i))
+		if rank != int64(i+1) {
+			t.Errorf("Wrong")
+		}
+		//t.Logf("%v", rank)
+	}
+}

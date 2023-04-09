@@ -136,7 +136,20 @@ func (skiplist *skipList) getByRank(rank int64) *skiplistNode {
 	return nil
 }
 
+// getRank 根据节点返回排名
 func (skiplist *skipList) getRank(ele string, score float64) int64 {
-	// TODO
+	var rank int64 = 0
+	node := skiplist.header
+	for i := skiplist.level - 1; i >= 0; i-- {
+		for node.level[i].forward != nil &&
+			(node.level[i].forward.score < score ||
+				node.level[i].forward.score == score && node.level[i].forward.ele <= ele) {
+			rank += node.level[i].span
+			node = node.level[i].forward
+		}
+		if node.ele == ele {
+			return rank
+		}
+	}
 	return 0
 }
