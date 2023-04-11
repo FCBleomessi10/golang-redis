@@ -153,3 +153,44 @@ func (skiplist *skipList) getRank(ele string, score float64) int64 {
 	}
 	return 0
 }
+
+// removeNode 移除指定节点
+func (skiplist *skipList) removeNode(node *skiplistNode, prev []*skiplistNode) {
+	for i := skiplist.level - 1; i >= 0; i-- {
+		if prev[i].level[i].forward == node {
+			prev[i].level[i].forward = node.level[i].forward
+			prev[i].level[i].span += node.level[i].span - 1
+		} else {
+			prev[i].level[i].span--
+		}
+	}
+	if node.level[0].forward != nil {
+		node.level[0].forward.backward = node.backward
+	} else {
+		skiplist.tail = node.backward
+	}
+	for skiplist.level > 1 && skiplist.header.level[skiplist.level-1].forward == nil {
+		skiplist.level--
+	}
+	skiplist.length--
+}
+
+// remove 根据ele和score删除节点
+func (skiplist *skipList) remove(ele string, score float64) bool {
+	prev := make([]*skiplistNode, skiplist.level)
+	node := skiplist.header
+	for i := skiplist.level - 1; i >= 0; i-- {
+		for node.level[i].forward != nil &&
+			node.level[i].forward.score < score ||
+			(node.level[i].forward.score == score && node.level[i].forward.ele < ele) {
+			node = node.level[i].forward
+		}
+		prev[i] = node
+	}
+	node = node.level[0].forward
+	if node != nil && node.score == score && node.ele == ele {
+		skiplist.removeNode(node, prev)
+		return true
+	}
+	return false
+}

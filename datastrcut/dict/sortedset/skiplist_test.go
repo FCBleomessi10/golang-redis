@@ -62,3 +62,15 @@ func TestGetRank(t *testing.T) {
 		//t.Logf("%v", rank)
 	}
 }
+
+func TestRemove(t *testing.T) {
+	length := 10
+	s := *makeSkipList()
+	for i := 0; i < length; i++ {
+		s.insert(strconv.Itoa(i), float64(i))
+	}
+	for i := 0; i < length; i++ {
+		s.remove(strconv.Itoa(i), float64(i))
+		t.Logf("%v %v", s.length, s.tail)
+	}
+}
