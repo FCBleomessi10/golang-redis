@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	MaxLevel = 16
+	maxLevel = 16
 )
 
 type skiplistLevel struct {
@@ -41,21 +41,21 @@ func makeNode(ele string, score float64, level int16) *skiplistNode {
 
 func makeSkipList() *skipList {
 	return &skipList{
-		header: makeNode("", 0, MaxLevel),
+		header: makeNode("", 0, maxLevel),
 		level:  1,
 	}
 }
 
 func randomLevel() int16 {
-	total := uint64(1)<<uint64(MaxLevel) - 1
+	total := uint64(1)<<uint64(maxLevel) - 1
 	u := rand.Uint64() % total
-	return MaxLevel - int16(bits.Len64(u+1)) + 1
+	return maxLevel - int16(bits.Len64(u+1)) + 1
 }
 
 func (skiplist *skipList) insert(ele string, score float64) *skiplistNode {
 	// 1. 定位到插入节点的前一个节点
-	prev := make([]*skiplistNode, MaxLevel)
-	spans := make([]int64, MaxLevel)
+	prev := make([]*skiplistNode, maxLevel)
+	spans := make([]int64, maxLevel)
 	cur := skiplist.header
 	// 1.1 从level[]的末尾遍历
 	for i := skiplist.level - 1; i >= 0; i-- {
@@ -193,4 +193,74 @@ func (skiplist *skipList) remove(ele string, score float64) bool {
 		return true
 	}
 	return false
+}
+
+// getRangeKey
+func (skiplist *skipList) getRangeByKey(start, stop string) []*skiplistNode {
+	if start > stop {
+		return nil
+	}
+
+	var startNode, stopNode *skiplistNode
+	var startIndex, stopIndex int64
+	startNode = skiplist.header
+	for i := skiplist.level - 1; i >= 0; i-- {
+		for startNode.level[i].forward != nil &&
+			startNode.level[i].forward.ele < start {
+			startIndex += startNode.level[i].span
+			startNode = startNode.level[i].forward
+		}
+	}
+	startNode = startNode.level[0].forward
+
+	stopNode = skiplist.header
+	for i := skiplist.level - 1; i >= 0; i-- {
+		for stopNode.level[i].forward != nil &&
+			stopNode.level[i].forward.ele < stop {
+			stopIndex += stopNode.level[i].span
+			stopNode = stopNode.level[i].forward
+		}
+	}
+	stopNode = stopNode.level[0].forward
+
+	nodes := make([]*skiplistNode, stopIndex-startIndex+1)
+	for i, n := 0, startNode; n != stopNode.level[0].forward; i, n = i+1, n.level[0].forward {
+		nodes[i] = n
+	}
+	return nodes
+}
+
+// getRangeByScore
+func (skiplist *skipList) getRangeByScore(min, max float64) []*skiplistNode {
+	if min > max {
+		return nil
+	}
+
+	var startNode, stopNode *skiplistNode
+	var startIndex, stopIndex int64
+	startNode = skiplist.header
+	for i := skiplist.level - 1; i >= 0; i-- {
+		for startNode.level[i].forward != nil &&
+			startNode.level[i].forward.score < min {
+			startIndex += startNode.level[i].span
+			startNode = startNode.level[i].forward
+		}
+	}
+	startNode = startNode.level[0].forward
+
+	stopNode = skiplist.header
+	for i := skiplist.level - 1; i >= 0; i-- {
+		for stopNode.level[i].forward != nil &&
+			stopNode.level[i].forward.score < max {
+			stopIndex += stopNode.level[i].span
+			stopNode = stopNode.level[i].forward
+		}
+	}
+	stopNode = stopNode.level[0].forward
+
+	nodes := make([]*skiplistNode, stopIndex-startIndex+1)
+	for i, n := 0, startNode; n != stopNode.level[0].forward; i, n = i+1, n.level[0].forward {
+		nodes[i] = n
+	}
+	return nodes
 }

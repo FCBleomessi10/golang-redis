@@ -74,3 +74,37 @@ func TestRemove(t *testing.T) {
 		t.Logf("%v %v", s.length, s.tail)
 	}
 }
+
+func TestGetRangeByKey(t *testing.T) {
+	length := 10
+	s := *makeSkipList()
+	for i := 0; i < length; i++ {
+		s.insert(strconv.Itoa(i), float64(i))
+	}
+
+	for i := 0; i < length; i++ {
+		for j := i; j < length; j++ {
+			nodes := s.getRangeByKey(strconv.Itoa(i), strconv.Itoa(j))
+			if len(nodes) != j-i+1 {
+				t.Errorf("Wrong")
+			}
+		}
+	}
+}
+
+func TestGetRangeByScore(t *testing.T) {
+	length := 10
+	s := *makeSkipList()
+	for i := 0; i < length; i++ {
+		s.insert(strconv.Itoa(i), float64(i))
+	}
+
+	for i := 0; i < length; i++ {
+		for j := i; j < length; j++ {
+			nodes := s.getRangeByScore(float64(i), float64(j))
+			if len(nodes) != j-i+1 {
+				t.Errorf("Wrong")
+			}
+		}
+	}
+}
